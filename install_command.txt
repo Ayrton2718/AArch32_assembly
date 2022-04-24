@@ -1,0 +1,81 @@
+// Update 
+apt update
+
+// Install qemu and so on.
+apt install qemu-user qemu-user-static build-essential file
+
+// Install cross-compiler for arm64
+apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu-dbg
+
+// Install cross-compiler for arm32
+apt install gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf binutils-arm-linux-gnueabihf-dbg
+
+
+// Make hello.c
+""" C
+#include <stdio.h>
+
+int main(void) { 
+    return printf("Hello, I'm executing ARM instructions!\n"); 
+}
+"""
+
+// Test arm64
+aarch64-linux-gnu-gcc -static -o hello64.out hello.c
+file hello64.out
+qemu-aarch64 -L /usr/aarch64-linux-gnu ./hello64.out
+
+
+// Test arm32
+arm-linux-gnueabihf-gcc -static -o hello32.out hello.c
+file hello32.out
+qemu-arm -L /usr/arm-linux-gnueabihf ./hello32.out
+
+
+// Gdb debug on cli
+qemu-arm -L /usr/arm-linux-gnueabihf -g 1234 ./hello32.out
+gdb-multiarch -q --nh -ex 'set architecture arm' -ex 'file hello32.out' -ex 'target remote localhost:1234' -ex 'layout split' -ex 'layout regs'
+
+
+// Gdb debug on vscode
+1. Vscode connect to the Docker container.
+2. Make binarry of arm32.
+    arm-linux-gnueabihf-gcc -g -o hello32.out hello32.c --static    // You can set options. e.g. "-mcpu=arm7 -mfpu=neon".
+
+3. Run gdb server.
+    qemu-arm -L /usr/arm-linux-gnueabihf -g 1234 ./hello32.out
+
+3. Make .vscode/launch.json
+""" launch.json
+{
+    // SOURCE: https://medium.com/@karel.l.vermeiren/ \
+    // cross-architecture-remote-debugging-using-gdb-with-visual-studio-code-vscode-on-linux-c0572794b4ef // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // More information at: https://go.microsoft.com/fwlink/linkid=830387 "version": "0.2.0",
+    "configurations": [
+        {
+          "name": "GDB debug - custom",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/hello32.out", <- Path of binarry file.
+          "args": [],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}",
+          "environment": [],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            } ],
+          "miDebuggerPath": "/usr/bin/gdb-multiarch",
+          "miDebuggerServerAddress": "localhost:1234" <- Set the 
+        }
+    ] 
+}
+"""
+
+4. Push the F5. You can start gdb debug!
+5. If you want to check the Disassembly, Right click on the hello.c and choose "Open Disassembly View". Like this link -> https://devblogs.microsoft.com/cppblog/visual-studio-code-c-july-2021-update-disassembly-view-macro-expansion-and-windows-arm64-debugging/ 
