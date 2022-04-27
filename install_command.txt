@@ -2,7 +2,7 @@
 apt update
 
 // Install qemu and so on.
-apt install qemu-user qemu-user-static build-essential file
+apt install qemu-user qemu-user-static gdb-multiarch build-essential file
 
 // Install cross-compiler for arm64
 apt install gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu binutils-aarch64-linux-gnu-dbg
@@ -40,7 +40,7 @@ gdb-multiarch -q --nh -ex 'set architecture arm' -ex 'file hello32.out' -ex 'tar
 // Gdb debug on vscode
 1. Vscode connect to the Docker container.
 2. Make binarry of arm32.
-    arm-linux-gnueabihf-gcc -g -o hello32.out hello32.c --static    // You can set options. e.g. "-mcpu=arm7 -mfpu=neon".
+    arm-linux-gnueabihf-gcc -g -o hello32.out hello.c --static    // You can set options. e.g. "-mcpu=arm7 -mfpu=neon".
 
 3. Run gdb server.
     qemu-arm -L /usr/arm-linux-gnueabihf -g 1234 ./hello32.out
