@@ -2,13 +2,13 @@
 
 set -e
 
-arm-linux-gnueabihf-gcc -g -mcpu=arm7 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -o hello32.out hello.c tiny_mat.c --static
+arm-linux-gnueabihf-gcc -g -mfpu=fpv4-sp-d16 -mfloat-abi=hard -o main.out main.c tiny_mat.c --static
 
 if [ $# -eq 0 ]; then
-    qemu-arm -L /usr/arm-linux-gnueabihf -g 1234 ./hello32.out
+    qemu-arm -L /usr/arm-linux-gnueabihf ./main.out
 else
     if [ "$1" = "-g" ]; then
-        qemu-arm -L /usr/arm-linux-gnueabihf ./hello32.out
+        qemu-arm -L /usr/arm-linux-gnueabihf -g 1234 ./main.out
     fi
 fi
 

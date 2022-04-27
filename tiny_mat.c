@@ -136,21 +136,21 @@ void TinyMat_mult(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 	{
 		for(size_t _row = 0; _row < tmp.row; _row++)
 		{
-			__asm__ (
-				"	vmov.f32 s0, #0"__BR
-				"loop:"__BR
-				"	vldr.f32 s1, [%[Rap], #0x04]!"__BR
-				"	ldr r0 [%%[Rbp], #0]"__BR
-				// "	vldr.f32 s2, [%[Rbp], #0x04]!"__BR
+			// __asm__ (
+			// 	"	vmov.f32 s0, #0"__BR
+			// 	"loop:"__BR
+			// 	"	vldr.f32 s1, [%[Rap], #0x04]!"__BR
+			// 	"	ldr r0 [%%[Rbp], #0]"__BR
+			// 	// "	vldr.f32 s2, [%[Rbp], #0x04]!"__BR
 
-				// "vldr.f32 s1, [%[Rap], #0]!"__BR
-				// "vldr.f32 s2, [%[Rbp], #0]"__BR
-				"vmla.f32 s0, s1, s2"__BR
-				"vstr.f32 s0, [%[Rtp], #0]"__BR
-				:
-				: [Rap] "r" (A->mat[_col]), [Rbp] "r" (B->mat), [Rtp] "r" (&tmp.mat[_col][_row])
-				: "r0", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"
-			);
+			// 	// "vldr.f32 s1, [%[Rap], #0]!"__BR
+			// 	// "vldr.f32 s2, [%[Rbp], #0]"__BR
+			// 	"vmla.f32 s0, s1, s2"__BR
+			// 	"vstr.f32 s0, [%[Rtp], #0]"__BR
+			// 	:
+			// 	: [Rap] "r" (A->mat[_col]), [Rbp] "r" (B->mat), [Rtp] "r" (&tmp.mat[_col][_row])
+			// 	: "r0", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"
+			// );
 
 			// tmp.mat[_col][_row] = 0;
 			// for(size_t a_row = 0; a_row < A->row; a_row++)
