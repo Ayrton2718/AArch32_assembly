@@ -26,7 +26,7 @@ typedef struct
 {
 	uint8_t col;
 	uint8_t row;
-	float mat[TINY_MAT_MAX_COL][TINY_MAT_MAX_ROW];
+	float mat[TINY_MAT_MAX_COL * TINY_MAT_MAX_ROW];
 } TinyMat_t;
 
 

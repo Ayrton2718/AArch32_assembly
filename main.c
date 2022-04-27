@@ -115,6 +115,7 @@ int main(void)
     TinyMat_t result;
     TinyMat_create(&result, 4, 4);
 
-    TinyMat_mult(&result, &mat1, &mat2);
+    // TinyMat_mult(&result, &mat1, &mat2);
+    TinyMat_multScalor(&result, &mat1, 1);
     TinyMat_show(&result);
 }

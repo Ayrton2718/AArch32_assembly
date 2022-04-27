@@ -8,7 +8,7 @@
           "name": "GDB debug - custom",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/hello32.out",
+          "program": "${workspaceFolder}/main.out",
           "args": [
           ],
           "stopAtEntry": true,
