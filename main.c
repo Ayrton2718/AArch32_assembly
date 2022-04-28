@@ -107,15 +107,17 @@ int main(void)
 
     TinyMat_t mat2;
     float mat2_array[2][2] = {
-        {1, 0},
-        {0, 1}
+        {1, 10},
+        {5, 1}
     };
     TinyMat_createArray(&mat2, 2, 2, (float*)mat2_array);
 
     TinyMat_t result;
     TinyMat_create(&result, 4, 4);
 
-    // TinyMat_mult(&result, &mat1, &mat2);
-    TinyMat_multScalor(&result, &mat1, 1);
+    TinyMat_mult(&result, &mat1, &mat2);
+    // TinyMat_multScalor(&result, &mat1, 100);
+    // TinyMat_add(&result, &mat1, &mat2);
+    // TinyMat_sub(&result, &mat1, &mat2);
     TinyMat_show(&result);
 }

@@ -8,6 +8,7 @@
 #include "tiny_mat.h"
 
 #include <stdio.h>
+#include <time.h>
 
 #define __BR  "\n\t"
 
@@ -128,52 +129,62 @@ void TinyMat_mult(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 {
 	TINY_MAT_CHECKER(B->col == A->row);
 	
-	TinyMat_t tmp;
+	res->col = A->col;
+	res->row = B->row;
 
-	tmp.col = A->col;
-	tmp.row = B->row;
+	__asm__ (
+		"mov r0, #0"__BR
+		"mult_loop0:"__BR
+		"	mov r1, #0"__BR
+		"	mult_loop1:"__BR
+		"		mul r2, r0, %[Rmax_row]"__BR
+		"		add r2, r1"__BR
+		"		lsl r2, #2"__BR
+
+		"		mov r3, #0"__BR
+		"		str r3, [%[Rres], r2]"__BR
+		"		vldr.f32 s0, [%[Rres], r2]"__BR
+
+		"		mov r2, #0"__BR
+		"		mult_loop2:"__BR
+		// "			mul r2, r0, %[Rmax_row]"__BR
+		// "			add r2, r1"__BR
+		// "			lsl r2, #2"__BR
 	
-	for(size_t _col = 0; _col < tmp.col; _col++)
+		// "		add r3, %[Ra], r2"__BR
+		// "		vldr.f32 s0, [r3]"__BR
+		// "		vmul.f32 s0, s0, s1"__BR
+
+		// "		add r3, %[Rres], r2"__BR
+		// "		vstr.f32 s0, [r3]"__BR
+
+		"			add r2, #1"__BR
+		"			cmp r2, %[R_row]"__BR
+		"			bne mult_loop2"__BR
+		"		add r1, #1"__BR
+		"		cmp r1, %[R_row]"__BR
+		"		bne mult_loop1"__BR
+		"	add r0, #1"__BR
+		"	cmp r0, %[R_col]"__BR
+		"	bne mult_loop0"__BR
+		:
+		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rb] "r" (B->mat), [R_col] "r" (res->col), [R_row] "r" (res->row), [Ra_row] "r" (res->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "r3", "s0", "s1"
+	);
+	
+	for(size_t _col = 0; _col < res->col; _col++)
 	{
-		for(size_t _row = 0; _row < tmp.row; _row++)
+		for(size_t _row = 0; _row < res->row; _row++)
 		{
-			// __asm__ (
-			// 	"add %[Rap], "
-			// 	"mul r0, %[Rmux_row], #0x04"__BR
-
-			// 	"vldr.f32 s1, %[Rap], #0x04"__BR
-			// 	"vldr.f32 s2, %[Rbp], r0"__BR
-			// 	"vmla.f32 s0, s1, s2" __BR
-			// 	""
-
-			// 	// "	vmov.f32 s0, #0"__BR
-			// 	// "vldr.f32 s0, =0"
-			// 	// "	vmov.f32 s0, 0"__BR
-			// 	// "loop:"__BR
-			// 	// "	vldr.f32 s1, [%[Rap], #0x04]!"__BR
-			// 	// "	ldr r0 [%%[Rbp], #0]"__BR
-			// 	// // "	vldr.f32 s2, [%[Rbp], #0x04]!"__BR
-
-			// 	// // "vldr.f32 s1, [%[Rap], #0]!"__BR
-			// 	// // "vldr.f32 s2, [%[Rbp], #0]"__BR
-			// 	// "vmla.f32 s0, s1, s2"__BR
-			// 	// "vstr.f32 s0, [%[Rtp], #0]"__BR
-			// 	:
-			// 	: [Rap] "r" (A->mat), [Rbp] "r" (B->mat), [Rtp] "r" (tmp.mat), [Ra_row] "r" (&A->row), [Rmux_row] "r" (TINY_MAT_MAX_ROW)
-			// 	: "r0", "r1", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7"
-			// );
-
-			tmp.mat[TINY_MAT_INDEX(_col, _row)] = 0;
+			res->mat[TINY_MAT_INDEX(_col, _row)] = 0;
 			for(size_t a_row = 0; a_row < A->row; a_row++)
 			{
-				tmp.mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(_col, a_row)] * B->mat[TINY_MAT_INDEX(a_row, _row)];
+				res->mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(_col, a_row)] * B->mat[TINY_MAT_INDEX(a_row, _row)];
 			}
 		}
 	}
 
-	TINY_MAT_SAFE(&tmp);
-
-	memcpy(res, &tmp, sizeof(TinyMat_t));
+	TINY_MAT_SAFE(res);
 }
 
 void TinyMat_multTransA(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
@@ -234,38 +245,32 @@ void TinyMat_multScalor(TinyMat_t* res, const TinyMat_t* A, float c)
 	res->row = A->row;
 
 	__asm__ (
+		"vldr.f32 s1, [%[Rc]]"__BR
 		"mov r0, #0"__BR
-		"loop1:"__BR
+		"multi_scalor_loop1:"__BR
 		"	mov r1, #0"__BR
-		"	loop2:"__BR
-		// "		mul r2, r0, %[Rmax_row]"__BR
-		// "		add r2, r1"__BR
-		"		mov r2, #1"__BR
+		"	multi_scalor_loop2:"__BR
+		"		mul r2, r0, %[Rmax_row]"__BR
+		"		add r2, r1"__BR
+		"		lsl r2, #2"__BR
+	
+		"		add r3, %[Ra], r2"__BR
+		"		vldr.f32 s0, [r3]"__BR
+		"		vmul.f32 s0, s0, s1"__BR
 
-		// "		vldr.f32 s0, [%[Ra], r2]"__BR
-		"		vmov.f32 s0, 1.0"__BR
-		// "		vmov.f32 s1, 2.0"__BR
-		// "		vmul.f32 s0, s0, s1"__BR
-		"		vstr.f32 s0, [%[Rres], r2]"__BR
+		"		add r3, %[Rres], r2"__BR
+		"		vstr.f32 s0, [r3]"__BR
 
 		"		add r1, #1"__BR
 		"		cmp r1, %[Rrow]"__BR
-		"		bne loop2"__BR
+		"		bne multi_scalor_loop2"__BR
 		"	add r0, #1"__BR
 		"	cmp r0, %[Rcol]"__BR
-		"	bne loop1"__BR
+		"	bne multi_scalor_loop1"__BR
 		:
-		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rc] "r" (&c), [Rcol] "r" (res->col), [Rrow] "r" (res->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
-		: "r0", "r1", "r2", "s0", "s1"
+		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rc] "r" (&c), [Rcol] "r" (A->col), [Rrow] "r" (A->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "r3", "s0", "s1"
 	);
-
-	// for(size_t _col = 0; _col < res->col; _col++)
-	// {
-	// 	for(size_t _row = 0; _row < res->row; _row++)
-	// 	{
-	// 		res->mat[TINY_MAT_INDEX(_col, _row)] = A->mat[TINY_MAT_INDEX(_col, _row)] * c;
-	// 	}
-	// }
 }
 
 
@@ -277,13 +282,36 @@ void TinyMat_add(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 	res->col = A->col;
 	res->row = A->row;
 
-	for(size_t _col = 0; _col < res->col; _col++)
-	{
-		for(size_t _row = 0; _row < res->row; _row++)
-		{
-			res->mat[TINY_MAT_INDEX(_col, _row)] = A->mat[TINY_MAT_INDEX(_col, _row)] + B->mat[TINY_MAT_INDEX(_col, _row)];
-		}
-	}
+	__asm__ (
+		"mov r0, #0"__BR
+		"add_loop1:"__BR
+		"	mov r1, #0"__BR
+		"	add_loop2:"__BR
+		"		mul r2, r0, %[Rmax_row]"__BR
+		"		add r2, r1"__BR
+		"		lsl r2, #2"__BR
+	
+		"		add r3, %[Ra], r2"__BR
+		"		vldr.f32 s0, [r3]"__BR
+
+		"		add r3, %[Rb], r2"__BR
+		"		vldr.f32 s1, [r3]"__BR
+
+		"		vadd.f32 s0, s0, s1"__BR
+
+		"		add r3, %[Rres], r2"__BR
+		"		vstr.f32 s0, [r3]"__BR
+
+		"		add r1, #1"__BR
+		"		cmp r1, %[Rrow]"__BR
+		"		bne add_loop2"__BR
+		"	add r0, #1"__BR
+		"	cmp r0, %[Rcol]"__BR
+		"	bne add_loop1"__BR
+		:
+		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rb] "r" (&B->mat), [Rcol] "r" (A->col), [Rrow] "r" (A->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "r3", "s0", "s1"
+	);
 
 	TINY_MAT_SAFE(res);
 }
@@ -297,13 +325,36 @@ void TinyMat_sub(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 	res->col = A->col;
 	res->row = A->row;
 
-	for(size_t _col = 0; _col < res->col; _col++)
-	{
-		for(size_t _row = 0; _row < res->row; _row++)
-		{
-			res->mat[TINY_MAT_INDEX(_col, _row)] = A->mat[TINY_MAT_INDEX(_col, _row)] - B->mat[TINY_MAT_INDEX(_col, _row)];
-		}
-	}
+	__asm__ (
+		"mov r0, #0"__BR
+		"sub_loop1:"__BR
+		"	mov r1, #0"__BR
+		"	sub_loop2:"__BR
+		"		mul r2, r0, %[Rmax_row]"__BR
+		"		add r2, r1"__BR
+		"		lsl r2, #2"__BR
+	
+		"		add r3, %[Ra], r2"__BR
+		"		vldr.f32 s0, [r3]"__BR
+
+		"		add r3, %[Rb], r2"__BR
+		"		vldr.f32 s1, [r3]"__BR
+
+		"		vsub.f32 s0, s0, s1"__BR
+
+		"		add r3, %[Rres], r2"__BR
+		"		vstr.f32 s0, [r3]"__BR
+
+		"		add r1, #1"__BR
+		"		cmp r1, %[Rrow]"__BR
+		"		bne sub_loop2"__BR
+		"	add r0, #1"__BR
+		"	cmp r0, %[Rcol]"__BR
+		"	bne sub_loop1"__BR
+		:
+		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rb] "r" (&B->mat), [Rcol] "r" (A->col), [Rrow] "r" (A->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "r3", "s0", "s1"
+	);
 
 	TINY_MAT_SAFE(res);
 }
