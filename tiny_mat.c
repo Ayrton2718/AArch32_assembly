@@ -235,30 +235,37 @@ void TinyMat_multScalor(TinyMat_t* res, const TinyMat_t* A, float c)
 
 	__asm__ (
 		"mov r0, #0"__BR
-		"mov r1, #0"__BR
 		"loop1:"__BR
+		"	mov r1, #0"__BR
 		"	loop2:"__BR
-		"		"
-		"		str r1, [%[Rres]], 0x04"__BR
+		// "		mul r2, r0, %[Rmax_row]"__BR
+		// "		add r2, r1"__BR
+		"		mov r2, #1"__BR
 
-		"		add r1, r1, #1"__BR
+		// "		vldr.f32 s0, [%[Ra], r2]"__BR
+		"		vmov.f32 s0, 1.0"__BR
+		// "		vmov.f32 s1, 2.0"__BR
+		// "		vmul.f32 s0, s0, s1"__BR
+		"		vstr.f32 s0, [%[Rres], r2]"__BR
+
+		"		add r1, #1"__BR
 		"		cmp r1, %[Rrow]"__BR
 		"		bne loop2"__BR
-		"	add r0, r0, #1"__BR
+		"	add r0, #1"__BR
 		"	cmp r0, %[Rcol]"__BR
 		"	bne loop1"__BR
 		:
-		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rc] "r" (&c), [Rcol] "r" (res->col), [Rrow] "r" (res->row)
-		: "r0", "r1", "r2", "s1", "s2", "s3", "s4", "s5", "s6", "s7"
+		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rc] "r" (&c), [Rcol] "r" (res->col), [Rrow] "r" (res->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "s0", "s1"
 	);
 
-	for(size_t _col = 0; _col < res->col; _col++)
-	{
-		for(size_t _row = 0; _row < res->row; _row++)
-		{
-			res->mat[TINY_MAT_INDEX(_col, _row)] = A->mat[TINY_MAT_INDEX(_col, _row)] * c;
-		}
-	}
+	// for(size_t _col = 0; _col < res->col; _col++)
+	// {
+	// 	for(size_t _row = 0; _row < res->row; _row++)
+	// 	{
+	// 		res->mat[TINY_MAT_INDEX(_col, _row)] = A->mat[TINY_MAT_INDEX(_col, _row)] * c;
+	// 	}
+	// }
 }
 
 
