@@ -125,42 +125,56 @@ void TinyMat_iden(TinyMat_t* obj, uint8_t n)
 }
 
 
-void TinyMat_mult(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
+void TinyMat_mult(register TinyMat_t* res, register const TinyMat_t* A, register const TinyMat_t* B)
 {
 	TINY_MAT_CHECKER(B->col == A->row);
 	
 	res->col = A->col;
 	res->row = B->row;
 
+
+	// for(size_t _col = 0; _col < res->col; _col++)
+	// {
+	// 	for(size_t _row = 0; _row < res->row; _row++)
+	// 	{
+	// 		res->mat[TINY_MAT_INDEX(_col, _row)] = 0;
+	// 		for(size_t a_row = 0; a_row < A->row; a_row++)
+	// 		{
+	// 			res->mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(_col, a_row)] * B->mat[TINY_MAT_INDEX(a_row, _row)];
+	// 		}
+	// 	}
+	// }
 	__asm__ (
 		"mov r0, #0"__BR
 		"mult_loop0:"__BR
 		"	mov r1, #0"__BR
 		"	mult_loop1:"__BR
-		"		mul r2, r0, %[Rmax_row]"__BR
-		"		add r2, r1"__BR
-		"		lsl r2, #2"__BR
-
 		"		mov r3, #0"__BR
-		"		str r3, [%[Rres], r2]"__BR
-		"		vldr.f32 s0, [%[Rres], r2]"__BR
+		"		mul r4, r0, %[Rmax_row]"__BR
+		"		add r4, r1"__BR
+		"		add r4, %[Rres], r4, lsl #2"__BR
+		"		str r3, [r4]"__BR
+		"		vldr.f32 s0, [r4]"__BR
 
 		"		mov r2, #0"__BR
 		"		mult_loop2:"__BR
-		// "			mul r2, r0, %[Rmax_row]"__BR
-		// "			add r2, r1"__BR
-		// "			lsl r2, #2"__BR
-	
-		// "		add r3, %[Ra], r2"__BR
-		// "		vldr.f32 s0, [r3]"__BR
-		// "		vmul.f32 s0, s0, s1"__BR
+		"			mul r3, r0, %[Rmax_row]"__BR
+		"			add r3, r2"__BR
+		"			add r3, %[Ra], r3, lsl #2"__BR
+		"			vldr.f32 s1, [r3]"__BR
 
-		// "		add r3, %[Rres], r2"__BR
-		// "		vstr.f32 s0, [r3]"__BR
+		"			mul r3, r2, %[Rmax_row]"__BR
+		"			add r3, r1"__BR
+		"			add r3, %[Rb], r3, lsl #2"__BR
+		"			vldr.f32 s2, [r3]"__BR
+
+		"			vmla.f32 s0, s1, s2"__BR
 
 		"			add r2, #1"__BR
-		"			cmp r2, %[R_row]"__BR
+		"			cmp r2, %[Ra_row]"__BR
 		"			bne mult_loop2"__BR
+		"		vstr.f32 s0, [r4]"__BR
+
 		"		add r1, #1"__BR
 		"		cmp r1, %[R_row]"__BR
 		"		bne mult_loop1"__BR
@@ -169,20 +183,8 @@ void TinyMat_mult(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 		"	bne mult_loop0"__BR
 		:
 		: [Rres] "r" (res->mat), [Ra] "r" (A->mat), [Rb] "r" (B->mat), [R_col] "r" (res->col), [R_row] "r" (res->row), [Ra_row] "r" (res->row), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
-		: "r0", "r1", "r2", "r3", "s0", "s1"
+		: "r0", "r1", "r2", "r3", "r4", "s0", "s1", "s2"
 	);
-	
-	for(size_t _col = 0; _col < res->col; _col++)
-	{
-		for(size_t _row = 0; _row < res->row; _row++)
-		{
-			res->mat[TINY_MAT_INDEX(_col, _row)] = 0;
-			for(size_t a_row = 0; a_row < A->row; a_row++)
-			{
-				res->mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(_col, a_row)] * B->mat[TINY_MAT_INDEX(a_row, _row)];
-			}
-		}
-	}
 
 	TINY_MAT_SAFE(res);
 }
@@ -201,9 +203,9 @@ void TinyMat_multTransA(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 		for(size_t _row = 0; _row < tmp.row; _row++)
 		{
 			tmp.mat[TINY_MAT_INDEX(_col, _row)] = 0;
-			for(size_t a_row = 0; a_row < A->col; a_row++)
+			for(size_t a_col = 0; a_col < A->col; a_col++)
 			{
-				tmp.mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(a_row, _col)] * B->mat[TINY_MAT_INDEX(a_row, _row)];
+				tmp.mat[TINY_MAT_INDEX(_col, _row)] += A->mat[TINY_MAT_INDEX(a_col, _col)] * B->mat[TINY_MAT_INDEX(a_col, _row)];
 			}
 		}
 	}
@@ -359,7 +361,7 @@ void TinyMat_sub(TinyMat_t* res, const TinyMat_t* A, const TinyMat_t* B)
 	TINY_MAT_SAFE(res);
 }
 
-
+// vdiv
 void TinyMat_inv(TinyMat_t* res, const TinyMat_t* A)
 {
 	TINY_MAT_CHECKER(A->col == A->row);
@@ -368,14 +370,38 @@ void TinyMat_inv(TinyMat_t* res, const TinyMat_t* A)
 
     // TinyMat_t tmp;
     float tmp[TINY_MAT_MAX_COL * 2 * TINY_MAT_MAX_ROW * 2];
+	// for (size_t col = 0; col < order; col++)
+    // {
+    // 	for (size_t row = 0; row < order; row++)
+    //     {
+    //         tmp[TINY_MAT_INDEX(col, row)] = A->mat[TINY_MAT_INDEX(col, row)];
+    //     }
+    // }
+	__asm__ (
+		"mov r0, #0"__BR
+		"inv_setTmp_loop1:"__BR
+		"	mov r1, #0"__BR
+		"	inv_setTmp_loop2:"__BR
+		"		mul r2, r0, %[Rmax_row]"__BR
+		"		add r2, r1"__BR
+		"		lsl r2, #2"__BR
+		"		add r3, %[Ra], r2"__BR
+		"		vldr.f32 s0, [r3]"__BR
 
-    for (size_t row = 0; row < order; row++)
-    {
-        for (size_t col = 0; col < order; col++)
-        {
-            tmp[TINY_MAT_INDEX(col, row)] = A->mat[TINY_MAT_INDEX(col, row)];
-        }
-    }
+		"		add r3, %[Rres], r2"__BR
+		"		vstr.f32 s0, [r3]"__BR
+		
+		"		add r1, #1"__BR
+		"		cmp r1, %[Rrow]"__BR
+		"		bne inv_setTmp_loop2"__BR
+		"	add r0, #1"__BR
+		"	cmp r0, %[Rcol]"__BR
+		"	bne inv_setTmp_loop1"__BR
+		:
+		: [Rres] "r" (tmp), [Ra] "r" (A->mat), [Rcol] "r" (order), [Rrow] "r" (order), [Rmax_row] "r" (TINY_MAT_MAX_ROW)
+		: "r0", "r1", "r2", "r3", "s0", "s1"
+	);
+	
 
     for (size_t row = 0; row < order; row++)
     {

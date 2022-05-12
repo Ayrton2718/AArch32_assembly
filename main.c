@@ -96,8 +96,6 @@ int tmp(void)
 
 int main(void) 
 { 
-    printf("tmp = %d\n", tmp());
-
     TinyMat_t mat1;
     float mat1_array[2][2] = {
         {1, 2},
@@ -108,14 +106,16 @@ int main(void)
     TinyMat_t mat2;
     float mat2_array[2][2] = {
         {1, 10},
-        {5, 1}
+        {5, 2}
     };
     TinyMat_createArray(&mat2, 2, 2, (float*)mat2_array);
 
     TinyMat_t result;
     TinyMat_create(&result, 4, 4);
 
-    TinyMat_mult(&result, &mat1, &mat2);
+    // TinyMat_mult(&result, &mat1, &mat2);
+    TinyMat_multTransA(&result, &mat1, &mat2);
+
     // TinyMat_multScalor(&result, &mat1, 100);
     // TinyMat_add(&result, &mat1, &mat2);
     // TinyMat_sub(&result, &mat1, &mat2);
